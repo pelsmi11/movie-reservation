@@ -1,0 +1,75 @@
+# Build
+/build/
+/out/
+/target/
+/bin/
+
+# Gradle
+.gradle/
+/gradle-app.setting
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+*.log
+logs/
+
+# IDEs
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+# VSCode
+.vscode/
+# Mac
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Test reports
+/test-results/
+/test-output/
+/surefire-reports/
+/jacoco/
+
+# Environment
+.env
+*.env
+application-local.yml
+application-local.properties
+
+# Database files
+*.h2.db
+*.mv.db
+
+# Flyway
+/flyway.conf
+/flyway-*.*
+/flyway/
+*.sql~ # Archivos temporales SQL
+
+# Miscellaneous
+*.class
+*.war
+*.jar
+*.ear
+
+# Node/Angular frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Docker
+**/docker-compose.override.yml
+**/docker-compose.local.yml
+
+# Other
+!.gitkeep
