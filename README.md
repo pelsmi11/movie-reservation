@@ -159,4 +159,9 @@ The `movie-reservation` system is built as a Kubernetes-orchestrated set of inde
 
 *For detailed deployment, endpoints, diagrams, and contribution guidelines, see the `/docs` directory.*
 
+---
+
+## License
+
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
 
