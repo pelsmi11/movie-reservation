@@ -40,4 +40,13 @@ public class User {
     @ManyToMany(mappedBy = "users")
     private Set<Role> roles = new LinkedHashSet<>();
 
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }
