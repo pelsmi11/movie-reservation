@@ -2,7 +2,9 @@ package com.hectormartinezmoreira.user_service.persistence.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.Hibernate;
 
@@ -12,27 +14,26 @@ import java.util.UUID;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Embeddable
 public class UserRoleId implements Serializable {
-    private static final long serialVersionUID = 5220671205235181913L;
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private UUID userId;
 
-    @Column(name = "role_id", nullable = false)
+    @Column(name = "role_id")
     private UUID roleId;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) return false;
-        UserRoleId entity = (UserRoleId) o;
-        return Objects.equals(this.roleId, entity.roleId) &&
-                Objects.equals(this.userId, entity.userId);
+        if (!(o instanceof UserRoleId that)) return false;
+        return Objects.equals(userId, that.userId) && Objects.equals(roleId, that.roleId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(roleId, userId);
+        return Objects.hash(userId, roleId);
     }
 
 }

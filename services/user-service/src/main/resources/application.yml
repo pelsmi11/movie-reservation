@@ -18,3 +18,8 @@ spring:
 
 server:
   port: 60201
+
+movie-service:
+  secret:
+    access: 1b183f729acb7c4863d8d4d6b1a35e21secretKeyExtraChars
+    refresh: 2a273e821bfc6b3749e9e5e7b2b46f22refreshKeyExtraChars

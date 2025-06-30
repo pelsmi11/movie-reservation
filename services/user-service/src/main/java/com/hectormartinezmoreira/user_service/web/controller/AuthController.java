@@ -4,7 +4,7 @@ import com.hectormartinezmoreira.user_service.domain.dto.request.LoginRequest;
 import com.hectormartinezmoreira.user_service.domain.dto.request.RefreshTokenRequest;
 import com.hectormartinezmoreira.user_service.domain.dto.response.TokenResponse;
 import com.hectormartinezmoreira.user_service.domain.exception.ErrorMessageException;
-import com.hectormartinezmoreira.user_service.persistence.model.User;
+import com.hectormartinezmoreira.user_service.persistence.model.UserEntity;
 import com.hectormartinezmoreira.user_service.persistence.repository.UserRepository;
 import com.hectormartinezmoreira.user_service.web.config.JwtUtil;
 import io.jsonwebtoken.JwtException;
@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,15 +31,16 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        UserEntity user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ErrorMessageException(INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            System.out.println("Invalid password");
             throw new ErrorMessageException(INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
-        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+        String accessToken = jwtUtil.generateAccessToken(user);
+        String refreshToken = jwtUtil.generateRefreshToken(user);
 
         return ResponseEntity.ok(TokenResponse.builder()
                 .accessToken(accessToken)
@@ -50,25 +52,21 @@ public class AuthController {
 
     @GetMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(@RequestHeader(name = "Authorization") String authorizationHeader) {
-        String accessToken = authorizationHeader.substring(7); // Remove "Bearer " prefix
-        if (accessToken.isEmpty()) {
+        String refreshToken = authorizationHeader.substring(7); // Remove "Bearer " prefix
+        if (refreshToken.isEmpty()) {
             throw new ErrorMessageException("Access token not present in headers", HttpStatus.UNAUTHORIZED);
         }
 
         try {
-            String email = jwtUtil.extractUsername(accessToken);
+            UUID userId = jwtUtil.extractUserIdFromRefreshToken(refreshToken);
+            UserEntity user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ErrorMessageException(INVALID_REFRESH_TOKEN, HttpStatus.UNAUTHORIZED));
 
-            // Verify user still exists
-            if (userRepository.findByEmail(email).isEmpty()) {
-                throw new ErrorMessageException("User not found", HttpStatus.NOT_FOUND);
-            }
-
-            String newAccessToken = jwtUtil.generateAccessToken(email);
-            String newRefreshToken = jwtUtil.generateRefreshToken(email);
+            String newAccestonToken = jwtUtil.generateAccessToken(user);
 
             return ResponseEntity.ok(TokenResponse.builder()
-                    .accessToken(newAccessToken)
-                    .refreshToken(newRefreshToken)
+                    .accessToken(newAccestonToken)
+                    .refreshToken(refreshToken)
                     .expiresIn(jwtUtil.getAccessTokenExpiration().getTime())
                     .tokenType("Bearer")
                     .build());

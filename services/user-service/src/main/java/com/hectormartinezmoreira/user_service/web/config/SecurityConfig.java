@@ -3,6 +3,7 @@ package com.hectormartinezmoreira.user_service.web.config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.Customizer;
@@ -42,9 +43,10 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for APIs
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/users").permitAll()  // Public access to registration
                         .requestMatchers("/api/auth/login").permitAll()  // Public access to registration
-                        .anyRequest().authenticated()               // All other routes require auth
+                        .requestMatchers("/api/users/all").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST,"/api/users").hasRole("ADMIN")                      // Public access to registration
+                        .anyRequest().authenticated()           // All other routes require auth
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);// Basic auth (can remove later if using JWT)

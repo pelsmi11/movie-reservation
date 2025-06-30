@@ -22,10 +22,7 @@ public class Role {
     @Column(name = "name", nullable = false, length = 50)
     private String name;
 
-    @ManyToMany
-    @JoinTable(name = "user_roles",
-            joinColumns = @JoinColumn(name = "role_id"),
-            inverseJoinColumns = @JoinColumn(name = "user_id"))
-    private Set<User> users = new LinkedHashSet<>();
+    @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UserRole> userRoles = new LinkedHashSet<>();
 
 }

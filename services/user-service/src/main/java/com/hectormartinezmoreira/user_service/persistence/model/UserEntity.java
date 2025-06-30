@@ -14,7 +14,7 @@ import java.util.UUID;
 @Setter
 @Entity
 @Table(name = "users")
-public class User {
+public class UserEntity {
     @Id
     @ColumnDefault("uuid_generate_v4()")
     @Column(name = "id", nullable = false)
@@ -37,8 +37,8 @@ public class User {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    @ManyToMany(mappedBy = "users")
-    private Set<Role> roles = new LinkedHashSet<>();
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UserRole> userRoles = new LinkedHashSet<>();
 
     @PrePersist
     protected void onCreate() {
