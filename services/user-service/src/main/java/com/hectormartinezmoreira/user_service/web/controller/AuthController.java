@@ -5,7 +5,6 @@ import com.hectormartinezmoreira.user_service.domain.dto.request.LoginRequest;
 import com.hectormartinezmoreira.user_service.domain.dto.response.TokenResponse;
 import com.hectormartinezmoreira.user_service.domain.exception.ErrorMessageException;
 import com.hectormartinezmoreira.user_service.persistence.model.UserEntity;
-import com.hectormartinezmoreira.user_service.persistence.model.UserRole;
 import com.hectormartinezmoreira.user_service.persistence.repository.UserRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;

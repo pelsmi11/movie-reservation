@@ -20,11 +20,18 @@ configurations {
 }
 
 repositories {
+	maven {
+		url = uri("https://maven.pkg.github.com/pelsmi11/movie-reservation")
+		credentials {
+			username = project.findProperty('gpr.user') ?: System.getenv('USERNAME_GITHUB')
+			password = project.findProperty('gpr.token') ?: System.getenv('TOKEN_GITHUB')
+		}
+	}
 	mavenCentral()
 }
 
 dependencies {
-	implementation project(':packages:jwt-core')
+	implementation 'com.hectormartinezmoreira:jwt-core:1.0.0'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
