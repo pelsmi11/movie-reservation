@@ -1,12 +1,12 @@
 package com.hectormartinezmoreira.user_service.web.controller;
 
+import com.hectormartinezmoreira.jwtcore.JwtUtil;
 import com.hectormartinezmoreira.user_service.domain.dto.request.LoginRequest;
-import com.hectormartinezmoreira.user_service.domain.dto.request.RefreshTokenRequest;
 import com.hectormartinezmoreira.user_service.domain.dto.response.TokenResponse;
 import com.hectormartinezmoreira.user_service.domain.exception.ErrorMessageException;
 import com.hectormartinezmoreira.user_service.persistence.model.UserEntity;
+import com.hectormartinezmoreira.user_service.persistence.model.UserRole;
 import com.hectormartinezmoreira.user_service.persistence.repository.UserRepository;
-import com.hectormartinezmoreira.user_service.web.config.JwtUtil;
 import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,7 +25,7 @@ import java.util.UUID;
 public class AuthController {
     private static final String INVALID_CREDENTIALS = "Invalid email or password";
     private static final String INVALID_REFRESH_TOKEN = "Invalid refresh token";
-    
+
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -35,17 +36,25 @@ public class AuthController {
                 .orElseThrow(() -> new ErrorMessageException(INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            System.out.println("Invalid password");
             throw new ErrorMessageException(INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
-        String accessToken = jwtUtil.generateAccessToken(user);
-        String refreshToken = jwtUtil.generateRefreshToken(user);
+        // Extract roles from user roles
+        List<String> roles = user.getUserRoles().stream()
+                .map(userRole -> userRole.getRole().getName())
+                .collect(Collectors.toList());
+
+        String accessToken = jwtUtil.generateAccessToken(
+                user.getId(),
+                user.getEmail(),
+                roles
+        );
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
         return ResponseEntity.ok(TokenResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .expiresIn(jwtUtil.getAccessTokenExpiration().getTime())
+                .expiresIn(jwtUtil.getProps().getAccessExpiration())
                 .tokenType("Bearer")
                 .build());
     }
@@ -62,12 +71,20 @@ public class AuthController {
             UserEntity user = userRepository.findById(userId)
                     .orElseThrow(() -> new ErrorMessageException(INVALID_REFRESH_TOKEN, HttpStatus.UNAUTHORIZED));
 
-            String newAccestonToken = jwtUtil.generateAccessToken(user);
+            List<String> roles = user.getUserRoles().stream()
+                    .map(userRole -> userRole.getRole().getName())
+                    .collect(Collectors.toList());
+
+            String newAccessToken = jwtUtil.generateAccessToken(
+                    user.getId(),
+                    user.getEmail(),
+                    roles
+            );
 
             return ResponseEntity.ok(TokenResponse.builder()
-                    .accessToken(newAccestonToken)
+                    .accessToken(newAccessToken)
                     .refreshToken(refreshToken)
-                    .expiresIn(jwtUtil.getAccessTokenExpiration().getTime())
+                    .expiresIn(jwtUtil.getProps().getAccessExpiration())
                     .tokenType("Bearer")
                     .build());
         } catch (JwtException ex) {

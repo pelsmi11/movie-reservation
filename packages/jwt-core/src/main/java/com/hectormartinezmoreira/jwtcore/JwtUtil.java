@@ -4,11 +4,13 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import lombok.Getter;
 
 import javax.crypto.spec.SecretKeySpec;
 import java.security.Key;
 import java.util.*;
 
+@Getter
 public class JwtUtil {
     private final JwtProperties props;
 
@@ -66,7 +68,7 @@ public class JwtUtil {
         Claims claims = extractAllClaimsFromAccessToken(token);
         String userIdStr = claims.get("idUser", String.class);
         if (userIdStr == null) userIdStr = claims.getSubject();
-        // Evitar warning unchecked: cast explícito a List<String>
+        // Avoid unchecked warning: explicit cast to List<String>
         Object rolesObj = claims.get("roles");
         List<String> roles;
         if (rolesObj instanceof List<?>) {
