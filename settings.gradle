@@ -1,0 +1,3 @@
+rootProject.name = 'movie-reservation'
+include 'packages:jwt-core'
+include 'services:user-service'

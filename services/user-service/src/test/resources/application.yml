@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+    show-sql: true
+  flyway:
+    enabled: false
+
+server:
+  port: 60201
+
+movie-service:
+  secret:
+    access: 1b183f729acb7c4863d8d4d6b1a35e21secretKeyExtraChars
+    refresh: 2a273e821bfc6b3749e9e5e7b2b46f22refreshKeyExtraChars
