@@ -1,318 +1,167 @@
-# 🎬 movie-reservation (AWS Solutions Architect – Associate Exercise)
+# 🎬 movie-reservation
 
-`movie-reservation` is a **cloud-native, microservices-based system** designed **primarily as a hands-on architectural exercise for AWS Solutions Architect – Associate (SAA)**.
-
-It uses a realistic domain (movie reservations) to practice **AWS architectural decisions**: availability, security, scalability, and cost optimization.
-
-> **Goal:** Design, deploy, and evolve a production-like system in AWS that demonstrates **high availability, security, scalability, and cost-awareness** — exactly what the SAA exam evaluates.
+A cloud-native, microservices-based Movie Reservation System inspired by the [roadmap.sh project specification](https://roadmap.sh/projects/movie-reservation-system). This project is designed for real-world scalability and learning, leveraging modern DevOps practices and industry-standard tools.
 
 ---
 
-## 🎯 Primary Learning Objective (SAA-first)
+## ⚡️ **Architecture Overview**
 
-This project is **not** about mastering Kubernetes first.
-It is about being able to explain and implement:
-
-* Why **ECS Fargate** instead of EC2 or EKS (at first)
-* Why **private subnets + NAT** for outbound access
-* How to isolate **DEV and PROD** safely
-* How to expose APIs without exposing servers
-* How to use **AWS-native messaging** (SNS/SQS/DLQ)
-* How to design for AZ failure and cost optimization
+The `movie-reservation` system is built as a Kubernetes-orchestrated set of independent microservices, each with its own data store and responsibilities. The system manages users, movies, showtimes, seat reservations, notifications, and analytics—supporting both customer and admin workflows, and integrating with external platforms for images, messaging, and email.
 
 ---
 
-## 🌍 Target Environment
+### **1. Frontend**
 
-* **AWS Region:** `us-east-1` (cost-effective, exam-friendly)
-* **DNS:** Amazon Route 53 (authoritative DNS)
-* **Domains (Route 53 records):**
-
-  * PROD Web: `movie-reservation.pelsmi11.website`
-  * PROD API: `api.movie-reservation.pelsmi11.website`
-  * DEV Web: `movie-reservation-dev.pelsmi11.website`
-  * DEV API: `api-dev.movie-reservation.pelsmi11.website`
-
----
-
-## ⚡️ Architecture Overview (Phase-based)
-
-The system evolves through **phases**, each mapped to common **SAA exam domains**.
-
-### Phase 1 — Core AWS Architecture (FOUNDATION)
-
-> Covers ~65–70% of SAA concepts
-
-**Architecture Pattern**
-
-* **Public** Application Load Balancer (ALB)
-* **Private** ECS Fargate services
-* **Private** RDS PostgreSQL
-* **NAT Gateway** for outbound traffic to the internet (e.g., Maven repos, external APIs)
-* **S3 + CloudFront** for the Angular frontend
-* **IAM Task Roles** + **SSM Parameter Store / Secrets Manager**
-
-**Key AWS Services**
-
-* VPC (multi-AZ)
-* Subnets (public/private) + route tables
-* Internet Gateway (IGW)
-* NAT Gateway
-* ALB + Target Groups
-* ECS Fargate
-* RDS PostgreSQL
-* S3 + CloudFront
-* Route 53 + ACM
-* CloudWatch
-* IAM
-
-### Phase 2 — Event-driven & Decoupling (MESSAGING)
-
-> Covers SAA topics around async, retries, fan-out, DLQs
-
-* **SNS** for publishing domain events
-* **SQS** for service-specific consumption
-* **DLQ** for failed processing
-* Optional: **EventBridge** for broader event routing
-
-### Phase 3 — Performance & Reliability (CACHING + DR)
-
-* **ElastiCache (Redis)** for read-heavy endpoints
-* **RDS Multi-AZ** and backup/restore drills
-* Optional: **Read Replica** for scale and reporting
-* Optional: **S3 lifecycle + replication** (CRR) to practice durability patterns
-
-### Phase 4 — Optional Kubernetes/Kong (ADVANCED)
-
-* EKS + Kong Ingress Controller
-* GitOps (ArgoCD)
-
-> Phase 4 is **not required** for SAA. It’s a post-certification upgrade path.
+- **Framework:** Angular
+- **Features:**
+  - User and admin panels
+  - Movie browsing, seat selection, booking, and history
+  - Admin CRUD for movies, scheduling, and reporting
+  - Service Worker for Web Push Notifications
+  - Real-time in-app notifications via WebSocket
+- **All API calls go through the API Gateway (Kong)**
 
 ---
 
-## 🧩 1. Shared Libraries / Packages
+### **2. API Gateway**
 
-This repo includes shared code used across multiple microservices.
-
-### `com.hectormartinezmoreira.jwt-core`
-
-A shared **JWT core library** (internal package) to avoid duplicating token logic.
-
-**Responsibilities**
-
-* JWT generation utilities (claims, expirations)
-* JWT validation utilities
-* Standardized token parsing (Authorization header)
-* Role/claim helpers (e.g., `ROLE_ADMIN`)
-
-**How it’s used**
-
-* `user-service`: issues JWTs using `jwt-core`
-* Other services: validate and parse JWTs consistently via `jwt-core`
-
-**Why (SAA perspective)**
-
-* Keeps auth logic consistent across services (reduces implementation drift)
-* Supports a clean “shared security primitive” while still keeping services independent
+- **Technology:** Kong (Ingress Controller on Kubernetes)
+- **Responsibilities:**
+  - Single entry point for frontend traffic
+  - Handles JWT authentication, authorization, rate limiting, logging, and routing
+  - Ensures secure, isolated, and observable API exposure
 
 ---
 
-## 🖥️ 2. Frontend (Phase 1)
+### **3. Microservices**
 
-* **Framework:** Angular
-* **Hosting:** S3 (static hosting) + CloudFront
-* **Security:** HTTPS via ACM
-* **Environments:** DEV/PROD via subdomains
-
-**Why (SAA):** static hosting, CDN caching, TLS termination, DNS-based environment isolation.
-
----
-
-## 🌐 3. API Entry Point (Phase 1)
-
-### Initial Gateway Strategy
-
-* **Application Load Balancer (ALB)**
-* Path-based routing:
-
-  * `/auth/*` → `user-service`
-  * `/movies/*` → `movie-service`
-  * `/tickets/*` → `ticket-service` (Phase 2)
-
-**Why not Kong yet?**
-ALB is cheaper/simpler and directly aligned to SAA topics (LBs, routing, health checks, HA).
+| Microservice                | Responsibility                                       | Technology        | Neon Database | Key Feature                                 | External Services                  |
+|-----------------------------|------------------------------------------------------|-------------------|--------------|----------------------------------------------|-------------------------------------|
+| **user-service**            | User & role management, authentication               | Spring Boot       | user_db      | JWT issuance and validation, roles           | RabbitMQ                            |
+| **movie-service**           | CRUD movies/genres, poster management                | Spring Boot       | movie_db     | Integrates Cloudinary for image upload/CDN   | Cloudinary, RabbitMQ                |
+| **showtime-service**        | Scheduling, managing showtimes                       | Spring Boot       | showtime_db  | Robust showtime calendar                     | RabbitMQ                            |
+| **ticket-service**          | Ticket booking, cancellation, reservation history    | Spring Boot       | ticket_db    | Transactional bookings, event publication    | RabbitMQ                            |
+| **seat-reservation-service**| Seat allocation & concurrency control (anti-overbook)| Spring Boot       | seat_db      | SELECT FOR UPDATE for locking, seat holds    | RabbitMQ                            |
+| **theater-service**         | Theater/screen management                            | Spring Boot       | theater_db   | CRUD for screens, locations, capacities      | RabbitMQ                            |
+| **reporting-service**       | Analytics, metrics, CSV/Excel export, email reports  | Spring Boot       | reporting_db | Aggregates events, automated email via SendGrid | RabbitMQ, SendGrid                  |
+| **notification-service**    | Real-time (WebSocket) and Web Push notifications     | Elixir/Phoenix OR Node.js | (user_db for tokens) | WebSocket channels, Push API, async events | RabbitMQ, Web Push, (SendGrid opt.) |
 
 ---
 
-## 🧩 4. Microservices (Phase-based Growth)
+### **4. Messaging & Async Communication**
 
-### Phase 1 — Minimal but Complete (MVP)
-
-| Service           | Responsibility                   | Technology  | Storage          |
-| ----------------- | -------------------------------- | ----------- | ---------------- |
-| **user-service**  | Auth, users, roles, JWT issuance | Spring Boot | RDS (schema)     |
-| **movie-service** | Movies/genres, poster metadata   | Spring Boot | RDS (schema), S3 |
-
-### Phase 2 — Business Expansion + Messaging
-
-| Service                  | Responsibility                      | Messaging                 |
-| ------------------------ | ----------------------------------- | ------------------------- |
-| **ticket-service**       | Bookings, cancellation, history     | publishes `ticket_issued` |
-| **reporting-service**    | Aggregates events, exports, reports | consumes events (SQS)     |
-| **notification-service** | Email notifications                 | consumes events (SQS)     |
-
-### Phase 3 — Stronger Consistency
-
-| Service                      | Responsibility                         |
-| ---------------------------- | -------------------------------------- |
-| **seat-reservation-service** | Concurrency control / anti-overbooking |
-| **theater-service**          | Screens, locations, capacities         |
+- **RabbitMQ (CloudAMQP):**
+  - Decouples event-driven actions (e.g. "ticket_issued", "seat_reserved")
+  - Powers notification-service, reporting-service, and potential audit extensions
+  - Enables scalable, resilient, and distributed processing
 
 ---
 
-## 🗄️ 5. Data Layer
+### **5. External Services**
 
-### Phase 1 (cost-aware)
-
-* Single **RDS PostgreSQL** in private subnets
-* Separate schemas per service (e.g., `user_schema`, `movie_schema`)
-* Automated backups enabled
-
-### Phase 2 (scalability)
-
-* Separate RDS per service **or** Aurora
-* Multi-AZ for production
-* Optional read replica for reporting
-
-**SAA Topics:** RDS vs Aurora, Multi-AZ vs Read Replica, backups, restore, RTO/RPO.
+- **Neon (PostgreSQL):**  
+  Each microservice has its own database, fully isolated and managed in the cloud.
+- **Cloudinary:**  
+  Image and media uploads for movie posters—secure URLs served via CDN.
+- **SendGrid:**  
+  Transactional and scheduled email delivery for reports, notifications, or alerts.
 
 ---
 
-## 📦 6. Media Storage (Phase 1)
+### **6. Notifications**
 
-* **Amazon S3** for posters
-* Upload via **presigned URLs**
-* Delivery via **CloudFront**
-
-**Phase 3 optional:** Lambda on S3 upload → generate thumbnails.
-
----
-
-## 🔄 7. Messaging & Async Communication (Phase 2)
-
-RabbitMQ is replaced to align with SAA.
-
-### AWS-native messaging
-
-* **SNS** topic for domain events (e.g., `ticket_issued`)
-* **SQS** queues per consumer service
-* **DLQ** for retries/failures
-
-**SAA Topics:** decoupling, fan-out, retries, DLQs.
+- **In-app (WebSocket):**  
+  Angular receives real-time updates via notification-service (Phoenix Channel).
+- **Web Push:**  
+  Angular registers browser subscriptions; backend pushes native browser notifications, even when the app is closed.
 
 ---
 
-## 🔔 8. Notifications (Phase 2)
+### **7. Reporting & Exports**
 
-* Email notifications driven by events:
-
-  * SNS → SQS → notification-service
-* Optional: SES migration later (to learn AWS email)
-
----
-
-## 🔐 9. Security Model (Phase 1)
-
-* JWT issued by `user-service` (using `jwt-core`)
-* Services validate tokens consistently using `jwt-core`
-* IAM Task Roles (no long-lived credentials)
-* Secrets stored in **SSM Parameter Store** or **Secrets Manager**
-* Compute in **private subnets**
+- **reporting-service** exposes REST endpoints for admin analytics (top movies, revenue, occupancy, etc.).
+- CSV/Excel export supported.
+- Scheduled or on-demand reports delivered via SendGrid email.
 
 ---
 
-## 🧠 10. Caching (Phase 3)
+### **8. Security & Roles**
 
-* **ElastiCache (Redis)** for read-heavy endpoints (catalog, top movies)
-* TTL + invalidation strategy
-
----
-
-## 🚀 11. Infrastructure & Deployment
-
-### Primary Path (SAA-focused)
-
-* ECS Fargate
-* ALB
-* Route 53
-* RDS
-* S3/CloudFront
-* CloudWatch
-
-### Optional / Advanced
-
-* EKS + Kong (Phase 4)
-* GitOps (ArgoCD)
+- **JWT** authentication handled by user-service and enforced at the gateway.
+- **Admin-only** endpoints for sensitive actions (CRUD, scheduling, reporting), with role-based access control at both gateway and microservice layers.
 
 ---
 
-## 📁 Monorepo Structure
+### **9. Infrastructure & Deployment**
 
+- **Kubernetes** (Minikube for local, scalable for cloud):  
+  Deployments, services, ingress (Kong), configmaps, and secrets defined as code.
+- **Monitoring:**  
+  Kubernetes Dashboard/Lens, CloudAMQP (RabbitMQ), Kong Admin API.
+- **CI/CD ready:**  
+  Monorepo structure for streamlined builds, testing, and deployments.
+
+---
+
+### **10. Monorepo Structure**
 ```text
 /movie-reservation
 │
 ├── services
 │   ├── user-service
 │   ├── movie-service
+│   ├── showtime-service
 │   ├── ticket-service
-│   ├── reporting-service
-│   ├── notification-service
 │   ├── seat-reservation-service
-│   └── theater-service
-│
-├── packages
-│   └── jwt-core                # com.hectormartinezmoreira.jwt-core
+│   ├── theater-service
+│   ├── reporting-service
+│   └── notification-service
 │
 ├── frontend
 │   └── angular-app
 │
 ├── infra
-│   ├── aws
-│   ├── docker
+│   ├── k8s
+│   ├── docker-compose
 │   └── scripts
 │
 ├── docs
-│   ├── architecture
-│   ├── aws-decisions
-│   └── diagrams
-│
 └── README.md
 ```
 
----
-
-## 🧭 Why This Project Prepares You for SAA
-
-If you can explain:
-
-* Why ALB + ECS Fargate
-* Why private subnets + NAT
-* Why SNS/SQS/DLQ over RabbitMQ
-* How DEV/PROD are isolated with Route 53
-* Where secrets live and how IAM roles access them
-* What happens when an AZ fails
-
-…then you’re thinking exactly like the SAA exam expects.
 
 ---
 
-## 📌 Project Inspiration
+## 🔄 **Typical Flow: Ticket Reservation & Notification**
 
-Inspired by the roadmap.sh Movie Reservation System project, restructured as an **AWS Solutions Architect learning exercise**.
+1. **User** logs in via Angular (JWT issued by user-service).
+2. Books a seat → **ticket-service** (validates/locks seat via seat-reservation-service).
+3. ticket-service saves booking, **publishes event to RabbitMQ**.
+4. **notification-service** pushes notification (WebSocket + Web Push).
+5. **reporting-service** updates analytics and can email CSV reports.
+
+---
+
+## 🛡️ **Best Practices**
+
+- Each microservice maintains its own schema and Flyway/Liquibase migrations.
+- Automated tests (unit/integration) per service.
+- Secure environment variable/config management (ConfigMap/Secret).
+- Roles and JWT claims strictly enforced.
+
+---
+
+## **Project Inspiration**
+
+> This implementation is inspired by the [roadmap.sh Movie Reservation System project](https://roadmap.sh/projects/movie-reservation-system).
+
+---
+
+*For detailed deployment, endpoints, diagrams, and contribution guidelines, see the `/docs` directory.*
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE).
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+
